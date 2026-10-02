@@ -1,0 +1,43 @@
+// 1) Découvrir les conteneurs via l'API Docker, uniquement ceux labellisés logging=alloy
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+  filter {
+    name   = "label"
+    values = ["logging=alloy"]
+  }
+}
+
+// 2) Transformer les métadonnées Docker en labels Loki lisibles
+discovery.relabel "containers" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"                // Docker préfixe les noms par "/" -> on le retire
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"                // stdout ou stderr
+  }
+}
+
+// 3) Lire les logs de ces conteneurs et les transmettre
+loki.source.docker "containers" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.containers.targets
+  relabel_rules = discovery.relabel.containers.rules
+  forward_to    = [loki.write.local.receiver]
+}
+
+// 4) Destination : Loki
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

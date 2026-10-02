@@ -1,0 +1,64 @@
+services:
+  app1:
+    image: nginx:alpine
+    ports: ["127.0.0.1:8081:80"]
+    labels:
+      logging: "alloy"          # -> Alloy collectera les logs de ce conteneur
+  app2:
+    image: nginx:alpine
+    ports: ["127.0.0.1:8082:80"]
+    labels:
+      logging: "alloy"
+  app3:
+    image: nginx:alpine
+    ports: ["127.0.0.1:8083:80"]
+    # pas de label "logging" -> logs NON collectés
+
+  alloy:
+    image: grafana/alloy:v1.20.1
+    # écoute sur 0.0.0.0 pour que l'interface web soit joignable hors du conteneur
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    ports: ["127.0.0.1:12345:12345"]
+    volumes:
+      - ./config/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on: [loki]
+
+  loki:
+    image: grafana/loki:3.7.8
+    command: -config.file=/etc/loki/local-config.yaml   # config « tout-en-un » fournie par l'image
+    hostname: loki
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.6
+    privileged: true
+    devices: ["/dev/kmsg"]
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      # TODO : monter ./config/prometheus.yml en lecture seule sur /etc/prometheus/prometheus.yml
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    ports: ["0.0.0.0:3030:3000"]
+    environment:
+      # Mode démo : pas d'écran de login, tout visiteur est Admin (voir la remarque ⚖️ ci-dessous)
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_SERVER_ROOT_URL=https://lab3.deltavia.com/absproxy/3030/   # adapter lab3
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    volumes:
+      # TODO : monter ./config/grafana-datasources.yml (en lecture seule)
+      #        dans le dossier de provisioning des datasources de Grafana :
+      #        /etc/grafana/provisioning/datasources/datasources.yml
+      - ./config/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+    depends_on: [loki]

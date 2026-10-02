@@ -1,0 +1,15 @@
+# version: '3.7'
+services:
+  reverse-proxy:
+    image: my-rev-proxy # /!\ preciser la version x:alpine-X
+    build: .
+    # plutot qu'un volume (plus pratique) => limitations lab nous font faire un Dockerfile / build
+    # volumes:
+    #   - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - 8080:80
+    networks:
+      - public
+networks:
+  public:
+    external: true

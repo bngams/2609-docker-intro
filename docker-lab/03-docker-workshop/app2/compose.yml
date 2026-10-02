@@ -1,0 +1,15 @@
+services:
+  app2:
+    image: traefik/whoami:v1.12.0
+    # uniquement si je veux un accès direct
+    # nous on souhaite un accès proxy uniquement
+    # ports:
+    #   - 8888:80
+    networks:
+      public:
+        aliases:
+          - app2
+
+networks:
+  public:
+    external: true

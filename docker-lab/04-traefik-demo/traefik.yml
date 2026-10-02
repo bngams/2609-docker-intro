@@ -1,0 +1,18 @@
+# docker-compose.yml
+services:
+  traefik:
+    image: traefik:v3.7
+    # config yml ou options
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      # http port proxy
+      - "8080:8080"
+      # https port 
+      - "4443:443"
+      # dashboard (en mode test)
+      - "8888:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

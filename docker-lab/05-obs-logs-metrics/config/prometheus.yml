@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 15s        # fréquence de lecture des cibles
+scrape_configs:
+  - job_name: prometheus      # Prometheus expose aussi ses propres métriques
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
